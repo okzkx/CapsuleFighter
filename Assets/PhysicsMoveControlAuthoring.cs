@@ -10,20 +10,13 @@ using UnityEngine;
 
 public class PhysicsMoveControlAuthoring : MonoBehaviour, IConvertGameObjectToEntity {
     public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem) {
-        dstManager.AddComponent<PhysicsMoveAbility.Tag>(entity);
-        dstManager.AddComponent<PhysicsMoveAbility.Input>(entity);
-        dstManager.AddComponent<RotationEulerXYZ>(entity);
-        dstManager.AddComponentData(entity, new PhysicsMoveAbility.Setting {
-            Speed = 5
-        });
+
     }
 }
 
+
 public static class PhysicsMoveAbility {
     public struct Tag : IComponentData { }
-    public struct Input : IComponentData {
-        public float2 Value;
-    }
     public struct Setting : IComponentData {
         public float Speed;
     }
@@ -32,30 +25,18 @@ public static class PhysicsMoveAbility {
         protected override void OnUpdate() {
             float deltaTime = Time.DeltaTime;
 
-            float speed = 10f;
+            var pvs = GetComponentDataFromEntity<PhysicsVelocity>();
+            var pms = GetComponentDataFromEntity<PhysicsMass>(true);
 
-            //Entities
-            //    .WithAll<Tag>()
-            //    .ForEach((ref Translation translation, ref PhysicsVelocity velocity, in PhysicsMass physicsMass, in Input input) => {
-            //        velocity.ApplyLinearImpulse(physicsMass, speed * new float3(input.Value.x, 0, input.Value.y));
-            //    }).ScheduleParallel();
             Entities
-                .WithAll<Tag>()
-                .ForEach((ref Translation translation, ref PhysicsVelocity velocity, in PhysicsMass physicsMass, in Charactor.Input input) => {
-                    velocity.ApplyLinearImpulse(physicsMass, speed * new float3(input.Axis.x, 0, input.Axis.y));
-                }).ScheduleParallel();
-        }
-    }
-
-    [UpdateAfter(typeof(ExportPhysicsWorld))]
-    public class FreezeRotationSystem : SystemBase {
-        protected override void OnUpdate() {
-            Entities
-               .WithAll<Tag>()
-               .ForEach((ref RotationEulerXYZ euler) => {
-                   var angle = euler.Value;
-                   euler.Value = angle;
-               }).ScheduleParallel();
+                .WithReadOnly(pms)
+                .WithAll<Tag,AbilityCommon.Active>()
+                .ForEach((in Owner owner, in AxisInput control,in Setting setting) => {
+                    PhysicsVelocity velocity = pvs[owner.Entity];
+                    PhysicsMass physicsMass = pms[owner.Entity];
+                    velocity.ApplyLinearImpulse(physicsMass, setting.Speed * new float3(control.Value.x, 0, control.Value.y));
+                    pvs[owner.Entity] = velocity;
+                }).Schedule();
         }
     }
 }

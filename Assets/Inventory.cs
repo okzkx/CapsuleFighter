@@ -10,7 +10,7 @@ public static class Inventory {
 
     public struct Spawner : IComponentData { }
 
-    public struct Entry : IBufferElementData {
+    public struct Entry : IComponentData {
         public Entity Entity;
     }
 
@@ -43,8 +43,7 @@ public static class Inventory {
                     buffer.AddBuffer<Item.Entry>(inventroyEntity);
 
                     buffer.RemoveComponent<Spawner>(entity);
-                    buffer.AddBuffer<Entry>(entity);
-                    buffer.AppendToBuffer(entity, new Entry { Entity = inventroyEntity });
+                    buffer.AddComponent(entity, new Entry { Entity = inventroyEntity });
                 }).Schedule();
 
             BeginSimulationEntityCommandBufferSystem.AddJobHandleForProducer(Dependency);
