@@ -1,19 +1,6 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using UnityEngine;
-
-public class MoveControlAuthoring : MonoBehaviour, IConvertGameObjectToEntity {
-    public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem) {
-        dstManager.AddComponent<MoveAbility.Tag>(entity);
-        dstManager.AddComponent<MoveAbility.Input>(entity);
-        dstManager.AddComponentData(entity, new MoveAbility.Setting {
-            Speed = 5
-        });
-    }
-}
 
 public class MoveAbility {
     public struct Tag : IComponentData { }

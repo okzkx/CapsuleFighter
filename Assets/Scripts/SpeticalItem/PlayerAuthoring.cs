@@ -23,6 +23,8 @@ public class PlayerWealSystem : SystemBase {
         base.OnCreate();
         BeginSimulationEntityCommandBufferSystem = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         initializationSystemGroup = World.GetOrCreateSystem<InitializationSystemGroup>();
+
+        Application.targetFrameRate = 60;
     }
 
     protected override void OnUpdate() {
@@ -59,14 +61,20 @@ public class PlayerWealSystem : SystemBase {
         //    }).Schedule();
         //Dependency.Complete();
 
-        // 赠送移动技能（物理）
+        // 赠送移动技能（Axis 输入）（物理）
         Entity moveAbilityEntity = EntityManager.CreateEntity();
         EntityManager.AddComponentData(moveAbilityEntity, new Owner { Entity = playerEntity });
         EntityManager.AddComponent<AbilityCommon.Active>(moveAbilityEntity);
         EntityManager.AddComponent<PhysicsMoveAbility.Tag>(moveAbilityEntity);
         EntityManager.AddComponent<AxisInput>(moveAbilityEntity);
-        EntityManager.AddComponentData(moveAbilityEntity, new PhysicsMoveAbility.Setting { Speed = 10 });
+        EntityManager.AddComponentData(moveAbilityEntity, new PhysicsMoveAbility.Setting { Strength = 20 });
         EntityManager.SetComponentData(playerEntity, new Character.AxisAbility { Entity = moveAbilityEntity });
+
+        // 赠送转向技能（鼠标位置输入）
+        Entity rtmpEntity = EntityManager.CreateEntity();
+        EntityManager.AddComponentData(rtmpEntity, new RotateToMousePos.Ability.Spawn { Owner = playerEntity });
+
+
 
         BeginSimulationEntityCommandBufferSystem.AddJobHandleForProducer(Dependency);
         initializationSystemGroup.RemoveSystemFromUpdateList(this);

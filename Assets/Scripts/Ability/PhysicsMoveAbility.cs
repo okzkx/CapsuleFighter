@@ -1,24 +1,13 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Unity.Entities;
+﻿using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Physics.Extensions;
 using Unity.Physics.Systems;
-using Unity.Transforms;
-using UnityEngine;
-
-public class PhysicsMoveControlAuthoring : MonoBehaviour, IConvertGameObjectToEntity {
-    public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem) {
-
-    }
-}
-
 
 public static class PhysicsMoveAbility {
     public struct Tag : IComponentData { }
     public struct Setting : IComponentData {
-        public float Speed;
+        public float Strength;
     }
     [UpdateBefore(typeof(BuildPhysicsWorld))]
     public class UpdateSystem : SystemBase {
@@ -30,11 +19,16 @@ public static class PhysicsMoveAbility {
 
             Entities
                 .WithReadOnly(pms)
-                .WithAll<Tag,AbilityCommon.Active>()
-                .ForEach((in Owner owner, in AxisInput control,in Setting setting) => {
+                .WithAll<Tag, AbilityCommon.Active>()
+                .ForEach((in Owner owner, in AxisInput input, in Setting setting) => {
+                    float3 rawDirection = new float3(input.Value.x, 0, input.Value.y);
+                    if (rawDirection.Equals(0)) {
+                        return;
+                    }
+                    float3 direction = math.normalize(rawDirection);
                     PhysicsVelocity velocity = pvs[owner.Entity];
                     PhysicsMass physicsMass = pms[owner.Entity];
-                    velocity.ApplyLinearImpulse(physicsMass, setting.Speed * new float3(control.Value.x, 0, control.Value.y));
+                    velocity.ApplyLinearImpulse(physicsMass, setting.Strength * direction);
                     pvs[owner.Entity] = velocity;
                 }).Schedule();
         }

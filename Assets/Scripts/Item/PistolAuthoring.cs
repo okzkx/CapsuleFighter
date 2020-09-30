@@ -1,12 +1,18 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Physics.Extensions;
 using Unity.Transforms;
 using UnityEngine;
 
 public class PistolAuthoring : MonoBehaviour, IConvertGameObjectToEntity {
+    public GameObject bulletSpawner;
     public void Convert(Entity entity, EntityManager dstManager, GameObjectConversionSystem conversionSystem) {
         dstManager.AddComponent<Pistol.Tag>(entity);
+        Entity bulletSpawnerEntity = conversionSystem.GetPrimaryEntity(bulletSpawner);
+        dstManager.AddComponentData(entity, new Pistol.Setting { BulletSpawnerEntity = bulletSpawnerEntity });
     }
 }
 
@@ -15,6 +21,9 @@ public static class Pistol {
     public struct Spawn : IComponentData {
         public Entity Parent;
         public Entity Owner;
+    }
+    public struct Setting : IComponentData {
+        public Entity BulletSpawnerEntity;
     }
 
     public class SpawenrSystem : SpawnerSystemBase {
@@ -38,10 +47,11 @@ public static class Pistol {
                     EntityManager.DestroyEntity(entity);
 
                     Entity abilitySpawnEntity = EntityManager.CreateEntity();
-                    EntityManager.AddComponentData(abilitySpawnEntity, new Ability.Spawn { Owner = pistol });
+                    EntityManager.AddComponentData(abilitySpawnEntity, new Ability.Spawn {
+                        Owner = pistol,
+                        BulletSpawnedPoint = EntityManager.GetComponentData<Setting>(pistol).BulletSpawnerEntity
+                    });
                 }).Run();
-
-            // TODO: Destory 
         }
     }
 
@@ -50,6 +60,15 @@ public static class Pistol {
 
         public struct Spawn : IComponentData {
             public Entity Owner;
+            public Entity BulletSpawnedPoint;
+        }
+
+        public struct Setting : IComponentData {
+            public Entity BulletSpawnedPoint;
+        }
+
+        public struct State : IComponentData {
+            public float CoolDownTimer;
         }
 
         public class SpawnSystem : SystemBase {
@@ -62,7 +81,9 @@ public static class Pistol {
                         EntityManager.AddComponent<AbilityCommon.Idle>(abilityEntity);
                         EntityManager.AddComponent<Tag>(abilityEntity);
                         EntityManager.AddComponentData(abilityEntity, new Owner { Entity = spawn.Owner });
+                        EntityManager.AddComponentData(abilityEntity, new Setting { BulletSpawnedPoint = spawn.BulletSpawnedPoint });
                         EntityManager.AddComponent<BoolInput>(abilityEntity);
+                        EntityManager.AddComponent<State>(abilityEntity);
 
                         Entity character = SystemUtil.GetCharacter(EntityManager, abilityEntity);
                         EntityManager.SetComponentData(character, new Character.LeftPressAbility { Entity = abilityEntity });
@@ -74,29 +95,58 @@ public static class Pistol {
 
         public class UpdateSystem : SystemBase {
             protected override void OnUpdate() {
+                Entity bulletPrefab = GetSingleton<PrefabRigister>().Bullet;
                 Entities
                     .WithoutBurst()
                     .WithStructuralChanges()
                     .WithAll<Tag, AbilityCommon.Idle>()
-                    .ForEach((Entity entity, in BoolInput boolInput) => {
+                    .ForEach((Entity entity, in BoolInput boolInput, in Setting setting) => {
                         if (boolInput.Value) {
-                            Debug.Log("fire");
+                            var bulletSpawnedLocalToWorld = EntityManager.GetComponentData<LocalToWorld>(setting.BulletSpawnedPoint);
+                            var forward = bulletSpawnedLocalToWorld.Forward;
+
+
+                            Entity bullet = EntityManager.Instantiate(bulletPrefab);
+                            EntityManager.SetComponentData(bullet, new Translation { Value = bulletSpawnedLocalToWorld.Position });
+                            EntityManager.SetComponentData(bullet, new Rotation { Value = bulletSpawnedLocalToWorld.Rotation });
+
+                            var bulletMass = EntityManager.GetComponentData<PhysicsMass>(bullet);
+                            var velocity = EntityManager.GetComponentData<PhysicsVelocity>(bullet);
+                            velocity.ApplyLinearImpulse(bulletMass, forward * 10);
+                            EntityManager.SetComponentData(bullet, velocity);
+
+                            EntityManager.RemoveComponent<AbilityCommon.Idle>(entity);
+                            EntityManager.AddComponent<AbilityCommon.Coldown>(entity);
                         }
 
-                        EntityManager.RemoveComponent<AbilityCommon.Idle>(entity);
-                        EntityManager.AddComponent<AbilityCommon.Coldown>(entity);
                     }).Run();
 
+                float DeltaTime = Time.DeltaTime;
                 Entities
                     .WithoutBurst()
                     .WithStructuralChanges()
                     .WithAll<Tag, AbilityCommon.Coldown>()
-                    .ForEach((Entity entity) => {
-
-                        EntityManager.RemoveComponent<AbilityCommon.Coldown>(entity);
-                        EntityManager.AddComponent<AbilityCommon.Idle>(entity);
+                    .ForEach((Entity entity, ref State state) => {
+                        state.CoolDownTimer += DeltaTime;
+                        if (state.CoolDownTimer > 1) {
+                            state.CoolDownTimer = 0;
+                            EntityManager.RemoveComponent<AbilityCommon.Coldown>(entity);
+                            EntityManager.AddComponent<AbilityCommon.Idle>(entity);
+                        }
                     }).Run();
+            }
+        }
 
+        public class DestorySystem : SystemBase {
+            protected override void OnUpdate() {
+                Entities
+                    .WithoutBurst()
+                    .WithStructuralChanges()
+                    .ForEach((Entity entity, in Owner owner) => {
+                        if (!EntityManager.Exists(owner.Entity)) {
+                            EntityManager.DestroyEntity(entity);
+                        }
+                    }).Run();
             }
         }
     }
@@ -140,7 +190,7 @@ public static class Pistol {
                     Entity pistolPrefab = GetSingleton<PrefabRigister>().Pistol;
                     Entities
                        .WithoutBurst()
-                       .WithAll<AbilityCommon.Idle>()
+                       .WithAll<HandlePistol, AbilityCommon.Idle>()
                        .WithNone<AbilityCommon.Active>()
                        .ForEach((Entity entity, in BoolInput boolInput, in ParentInput parentInput) => {
                            if (boolInput.Value) {
@@ -153,7 +203,7 @@ public static class Pistol {
 
                     Entities
                        .WithoutBurst()
-                       .WithAll<AbilityCommon.Active>()
+                       .WithAll<HandlePistol, AbilityCommon.Active>()
                        .WithNone<AbilityCommon.Coldown>()
                        .ForEach((Entity entity, in BoolInput boolInput) => {
                            if (boolInput.Value) {
@@ -167,7 +217,7 @@ public static class Pistol {
 
                     Entities
                        .WithoutBurst()
-                       .WithAll<AbilityCommon.Coldown>()
+                       .WithAll<HandlePistol, AbilityCommon.Coldown>()
                        .ForEach((Entity entity, in BoolInput boolInput) => {
                            buffer.RemoveComponent<AbilityCommon.Coldown>(entity);
                            buffer.AddComponent<AbilityCommon.Idle>(entity);

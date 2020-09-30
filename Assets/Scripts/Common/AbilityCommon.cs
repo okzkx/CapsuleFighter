@@ -1,9 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Transforms;
-using UnityEngine;
+﻿using Unity.Entities;
 
 public class AbilityCommon {
     public struct Tag : IComponentData { }
@@ -26,8 +21,3 @@ public class AbilityCommon {
     public struct Coldown : IComponentData { }
 }
 
-public class AbilitySystem : SystemBase {
-    protected override void OnUpdate() {
-
-    }
-}

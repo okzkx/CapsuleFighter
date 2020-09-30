@@ -12,6 +12,10 @@ public struct BoolInput : IComponentData {
     public bool Value;
 }
 
+public struct MousePosInput : IComponentData {
+    public float3 Value;
+}
+
 public struct ParentInput : IComponentData {
     public Entity Entity;
 }
@@ -30,27 +34,15 @@ public class InputSystem : SystemBase {
         bool Alpha1 = Input.GetKeyDown(KeyCode.Alpha1);
         bool LeftPress = Input.GetMouseButton(0);
 
-        //Entities
-        //    .WithAll<Player.Tag>()
-        //    .ForEach((ref MoveAbility.Input input) => {
-        //        input.Value.x = inputX;
-        //        input.Value.y = inputZ;
-        //    }).ScheduleParallel();
-
-        //Entities
-        //    .WithAll<Player.Tag>()
-        //    .ForEach((ref PhysicsMoveAbility.Input physicsMoveAbilityInput) => {
-        //        physicsMoveAbilityInput.Value.x = inputX;
-        //        physicsMoveAbilityInput.Value.y = inputZ;
-        //    }).ScheduleParallel();
-
         Entities
+            .WithoutBurst()
             .WithAll<Player.Tag>()
             .ForEach((ref Character.Input input) => {
                 input.Axis.x = inputX;
                 input.Axis.y = inputZ;
                 input.Alpha1 = Alpha1;
                 input.LeftPress = LeftPress;
-            }).ScheduleParallel();
+                input.MousePos = Input.mousePosition;
+            }).Run();
     }
 }

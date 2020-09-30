@@ -20,17 +20,21 @@ public class CharacterAuthoring : MonoBehaviour, IConvertGameObjectToEntity {
         dstManager.AddComponent<Character.AxisAbility>(entity);
         dstManager.AddComponent<Character.LeftPressAbility>(entity);
         dstManager.AddComponent<Character.RightPressAbility>(entity);
+        dstManager.AddComponent<Character.MousePosAbility>(entity);
         dstManager.AddComponent<Inventory.Spawner>(entity);
     }
 }
 
 // Tag Inventory.Entry Ability.Entry
 public static class Character {
+
     public struct Tag : IComponentData { }
+
     public struct Input : IComponentData {
         public float2 Axis;
         public bool Alpha1;
         public bool LeftPress;
+        public float3 MousePos;
     }
 
     public struct AxisAbility : IComponentData {
@@ -44,46 +48,14 @@ public static class Character {
     public struct LeftPressAbility : IComponentData {
         public Entity Entity;
     }
+
     public struct RightPressAbility : IComponentData {
         public Entity Entity;
     }
-    // Update Charactor AbilityEntry
-    //public class UpdateAbilityEntrySystem : SystemBase {
-    //    protected override void OnUpdate() {
-    //        var ieFromEntity = GetBufferFromEntity<Inventory.Entry>(true);
-    //        var iieFromEntity = GetBufferFromEntity<Inventory.Item.Entry>(true);
-    //        var aeFromEntity = GetBufferFromEntity<AbilityCommon.Entry>(false);
-    //        Entities
-    //            .WithReadOnly(ieFromEntity)
-    //            .WithReadOnly(iieFromEntity)
-    //            .WithAll<Tag>()
-    //            .ForEach((Entity entity) => {
-    //                var entries = aeFromEntity[entity];
-    //                entries.Clear();
 
-    //                if (!ieFromEntity.HasComponent(entity)) {
-    //                    return;
-    //                }
-
-    //                var ies = ieFromEntity[entity];
-    //                for (int i = 0; i < ies.Length; i++) {
-    //                    var ie = ies[i].Entity;
-    //                    if (!iieFromEntity.HasComponent(ie)) continue;
-    //                    var iies = iieFromEntity[ie];
-    //                    for (int j = 0; j < iies.Length; j++) {
-    //                        var iie = iies[i].Entity;
-    //                        if (!aeFromEntity.HasComponent(iie)) continue;
-    //                        var aes = aeFromEntity[iie];
-    //                        for (int k = 0; k < aes.Length; k++) {
-    //                            var ae = aes[i].Entity;
-    //                            entries.Add(new AbilityCommon.Entry { Entity = ae });
-    //                        }
-    //                    }
-    //                }
-
-    //            }).Schedule();
-    //    }
-    //}
+    public struct MousePosAbility : IComponentData {
+        public Entity Entity;
+    }
 
     public class ActiveAbilitySystem : SystemBase {
         protected override void OnUpdate() {
@@ -124,18 +96,16 @@ public static class Character {
                         EntityManager.SetComponentData(ability.Entity, new BoolInput { Value = input.LeftPress });
                     }
                 }).Run();
-        }
-    }
 
-    [UpdateAfter(typeof(ExportPhysicsWorld))]
-    public class FreezeRotationSystem : SystemBase {
-        protected override void OnUpdate() {
+            // 鼠标位置输入
             Entities
-               .WithAll<Tag>()
-               .ForEach((ref RotationEulerXYZ euler) => {
-                   var angle = euler.Value;
-                   euler.Value = angle;
-               }).ScheduleParallel();
+                .WithoutBurst()
+                .WithAll<Character.Tag>()
+                .ForEach((in MousePosAbility ability, in Input input) => {
+                    if (EntityManager.HasComponent<MousePosInput>(ability.Entity)) {
+                        EntityManager.SetComponentData(ability.Entity, new MousePosInput { Value = input.MousePos });
+                    }
+                }).Run();
         }
     }
 }
