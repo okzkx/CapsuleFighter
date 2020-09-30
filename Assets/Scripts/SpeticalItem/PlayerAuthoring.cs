@@ -42,25 +42,6 @@ public class PlayerWealSystem : SystemBase {
         var itemEntry = EntityManager.GetBuffer<Inventory.Item.Entry>(InventoryEntity);
         itemEntry.Add(new Inventory.Item.Entry { Entity = pistolInventoryEntity });
 
-        //var buffer = BeginSimulationEntityCommandBufferSystem.CreateCommandBuffer();
-        //var playerTagFormEntity = GetComponentDataFromEntity<Player.Tag>();
-        //buffer.AppendToBuffer(entity, new Inventory.Item.Entry { Entity = pistolInventoryEntity });
-        //Entities
-        //    .WithReadOnly(playerTagFormEntity)
-        //    .WithAll<Inventory.Tag>()
-        //    .ForEach((Entity entity, ref Owner owner) => {
-        //        if (playerTagFormEntity.HasComponent(owner.Entity)) {
-        //            Entity pistolInventoryEntity = buffer.CreateEntity();
-        //            buffer.AddComponent<Inventory.Item.Tag>(pistolInventoryEntity);
-        //            buffer.AddComponent(pistolInventoryEntity, new Owner { Entity = entity });
-        //            buffer.AddComponent<Pistol.InventoryItem.Tag>(pistolInventoryEntity);
-
-        //            buffer.AppendToBuffer(entity, new Inventory.Item.Entry { Entity = pistolInventoryEntity });
-        //        }
-
-        //    }).Schedule();
-        //Dependency.Complete();
-
         // 赠送移动技能（Axis 输入）（物理）
         Entity moveAbilityEntity = EntityManager.CreateEntity();
         EntityManager.AddComponentData(moveAbilityEntity, new Owner { Entity = playerEntity });
@@ -73,8 +54,6 @@ public class PlayerWealSystem : SystemBase {
         // 赠送转向技能（鼠标位置输入）
         Entity rtmpEntity = EntityManager.CreateEntity();
         EntityManager.AddComponentData(rtmpEntity, new RotateToMousePos.Ability.Spawn { Owner = playerEntity });
-
-
 
         BeginSimulationEntityCommandBufferSystem.AddJobHandleForProducer(Dependency);
         initializationSystemGroup.RemoveSystemFromUpdateList(this);

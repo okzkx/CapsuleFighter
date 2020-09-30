@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using Unity.Entities;
-using UnityEngine;
-
 
 public static class SystemUtil {
     internal static Entity GetCharacter(EntityManager entityManager, Entity entity) {

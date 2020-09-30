@@ -1,9 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Transforms;
-using UnityEngine;
+﻿using Unity.Entities;
 
 [UpdateInGroup(typeof(InitializationSystemGroup))]
 public abstract class SpawnerSystemBase : SystemBase {
